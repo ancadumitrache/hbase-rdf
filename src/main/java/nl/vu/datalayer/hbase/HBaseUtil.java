@@ -16,10 +16,18 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+import org.apache.hadoop.hbase.filter.ValueFilter;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.HConstants;
+import org.openrdf.model.URI;
+import org.openrdf.model.impl.URIImpl;
 
 import com.sun.appserv.util.cache.Constants;
 
@@ -28,6 +36,11 @@ public class HBaseUtil {
 	
 	public static HBaseAdmin hbase = null;
 	public static Configuration conf = null;
+	
+	public static String encodePred(String pred) {
+		String encodedPred = Integer.toString(pred.hashCode());
+		return encodedPred.replace("-", "0");
+	}
 	
 	public HBaseUtil(String configFilePath) throws Exception
 	{
@@ -39,15 +52,12 @@ public class HBaseUtil {
 	    }
 		else {
 			System.out.println("Yeah!!!");
-			conf.set(HConstants.ZOOKEEPER_QUORUM, "");
-			conf.set("hbase.master", "");
-			conf.set(HConstants.ZOOKEEPER_CLIENT_PORT, "2181");
-			conf.set("hadoop.socks.server", "localhost:6666");
-			conf.set("hadoop.rpc.socket.factory.class.default", "org.apache.hadoop.net.SocksSocketFactory");
+			
 		}
 		
 		System.out.println(conf);
 		hbase = new HBaseAdmin(conf);
+		
 		
 	}
 	
@@ -68,6 +78,8 @@ public class HBaseUtil {
 	    if (hbase.tableExists("predicates") == false) {
 	    	hbase.createTable(desc);
 	    }
+	    
+	    hbase.enableTable("predicates");
 	}
 	
 	public void createTableStruct(String table, ArrayList<String> columns)  throws IOException {
@@ -75,15 +87,15 @@ public class HBaseUtil {
 	    HTableDescriptor desc;
 	    if (hbase.tableExists(table) == false) {
 	    	desc = new HTableDescriptor(table);
-	    	HColumnDescriptor literal = new HColumnDescriptor("literal".getBytes());
-	    	desc.addFamily(literal);
+//	    	HColumnDescriptor literal = new HColumnDescriptor("literal".getBytes());
+//	    	desc.addFamily(literal);
 	    }
 	    else {
 		     desc = hbase.getTableDescriptor(table.getBytes());
 	    }
 	    
 		for (Iterator<String> iter = columns.iterator(); iter.hasNext();) {
-			String columnName = iter.next().replaceAll("[^A-Za-z0-9 ]", "");
+			String columnName = encodePred(iter.next());
 //			System.out.println("COLUMN: " + columnName);
 			
 			HColumnDescriptor c = new HColumnDescriptor(columnName.getBytes());
@@ -95,36 +107,32 @@ public class HBaseUtil {
 	    if (hbase.tableExists(table) == false) {
 	    	hbase.createTable(desc);
 	    }
+	    
+	    hbase.enableTable(table);
 	}
 	
 	public  void addRow(String tableName, String key, String columnFam, String columnName, String val) throws IOException {
 
-	    
+//	    System.out.println("PRED ENTRY: " + columnFam);
 	    // add triples to HBase
+		String hashPred = encodePred(columnFam);
+		
 	    HTable table = new HTable(conf, tableName);
 	    Put row = new Put(Bytes.toBytes(key));
-	    row.add(Bytes.toBytes(columnFam.replaceAll("[^A-Za-z0-9 ]", "")), Bytes.toBytes(columnName.replaceAll("[^A-Za-z0-9 ]", "")), Bytes.toBytes(val));
+	    row.add(Bytes.toBytes(hashPred), Bytes.toBytes(columnName), Bytes.toBytes(val));
 	    table.put(row);
 	    
-	    // store full predicate URI
-	    String pred;
-	    if (columnFam.compareTo("literal") != 0) {
-	    	pred = columnFam;
-	    }
-	    else {
-	    	pred = columnName;
-	    }
-	    
-	    System.out.println("PRED ENTRY: " + pred + " " + pred.replaceAll("[^A-Za-z0-9 ]", ""));
+
 	    table = new HTable(conf, "predicates");
-	    row = new Put(Bytes.toBytes(pred.replaceAll("[^A-Za-z0-9 ]", ""))); 
-	    row.add(Bytes.toBytes("URI"), Bytes.toBytes(""), Bytes.toBytes(pred));
+	    row = new Put(Bytes.toBytes(hashPred)); 
+	    row.add(Bytes.toBytes("URI"), Bytes.toBytes(""), Bytes.toBytes(columnFam));
 	    table.put(row);
 	}
 	
 	public ArrayList<ArrayList<String>> getRow(String URI, String tableName)  throws IOException {
 
 	    HTable table = new HTable(conf, tableName);
+	    System.out.println("Fetching from TABLE: " + tableName + ", URI:" + URI);
 	    
 		Get g = new Get(Bytes.toBytes(URI));
 	    Result r = table.get(g);
@@ -137,10 +145,10 @@ public class HBaseUtil {
 	    	ArrayList<String> triple = new ArrayList();
 	    	
 	    	String pred = Bytes.toString(k.getFamily());
-	    	if (pred.compareTo("literal") == 0) {
-	    		pred = Bytes.toString(k.getQualifier());
-	    	}
 	    	triple.add(pred);
+	    	
+	    	String objType = Bytes.toString(k.getQualifier());
+	    	triple.add(objType);
 	    	
 	    	String val = Bytes.toString(k.getValue());
 	    	triple.add(val);
@@ -156,7 +164,13 @@ public class HBaseUtil {
 		
 	    HTable table = new HTable(conf, "predicates");
 	    
+	    System.out.println("ENCODED PRED: " + encodePred(pred));
+	    
 		Get g = new Get(Bytes.toBytes(pred));
+		
+//		Filter f = new SingleColumnValueFilter(Bytes.toBytes("URI"),
+//				Bytes.toBytes(""), CompareFilter.CompareOp.EQUAL, Bytes.toBytes(pred));
+//		g.setFilter(f);
 	    Result r = table.get(g);
 	    
 	    List<KeyValue> rawList = r.list();

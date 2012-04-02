@@ -24,7 +24,16 @@ import java.io.IOException;
 
 public class NTripleParser {
 	
-	public static void parse(String file, String confPath) throws IOException {
+	String file;
+	String confPath;
+	
+	public NTripleParser(String f, String cp) {
+//		file = FilenameUtils.removeExtension(FilenameUtils.getName(f));
+		file = f;
+		confPath = cp;
+	}
+	
+	public void parse() throws IOException {
 		
 		try {
 			HBaseUtil util = new HBaseUtil(confPath);
@@ -51,27 +60,33 @@ public class NTripleParser {
 			String tableName = FilenameUtils.removeExtension(FilenameUtils.getName(file));
 			
 			// create table column families
-			ArrayList<String> predicates = new ArrayList<String>();
+			ArrayList<String> predicatesHash = new ArrayList<String>();
 			for (Iterator<Statement> iter = myList.iterator(); iter.hasNext();) {
 				Statement s = iter.next();
-				if (s.getObject() instanceof Resource) {
-					predicates.add(s.getPredicate().stringValue());
-				}
-				else {
-					// predicates.add("literal:" + s.getPredicate().stringValue());
-				}
+				
+//				System.out.println("PREDICATE: " + s.getPredicate().stringValue()
+//						+ " = " + pred);
+				
+				predicatesHash.add(s.getPredicate().stringValue());
 			}
-			util.createTableStruct(tableName, predicates);
+			util.createTableStruct(tableName, predicatesHash);
 			util.cachePredicates();
 			
 			// populate table
 			for (Iterator<Statement> iter = myList.iterator(); iter.hasNext();) {
 				Statement s = iter.next();
 				if (s.getObject() instanceof Resource){
-					util.addRow(tableName, s.getSubject().toString(), s.getPredicate().toString(), "", s.getObject().toString());
+					util.addRow(tableName, s.getSubject().stringValue(), 
+							s.getPredicate().stringValue() ,"resource",
+							s.getObject().stringValue());
 				}
 				else {
-					util.addRow(tableName, s.getSubject().toString(), "literal", s.getPredicate().toString(), s.getObject().toString());
+					util.addRow(tableName, s.getSubject().stringValue(), 
+							s.getPredicate().stringValue() ,"literal",
+							s.getObject().stringValue());
+//					System.out.println(tableName + " - " + s.getSubject().toString() +
+//							" - " + s.getPredicate().toString() + " - " + "literal" + " - " + 
+//							s.getObject().toString());
 				}
 			}
 		}
@@ -83,10 +98,11 @@ public class NTripleParser {
 	
 	public static void main(String[] args) {
 		try {
-			parse("tbl-card.nt", null);
-			//parse(args[0]);
+			NTripleParser ntp = new NTripleParser("data/tbl-card.nt", null);
+			ntp.parse();
 		}
 		catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
