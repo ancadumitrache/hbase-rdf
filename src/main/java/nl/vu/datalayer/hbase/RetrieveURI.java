@@ -28,6 +28,54 @@ public class RetrieveURI {
 		table = FilenameUtils.removeExtension(FilenameUtils.getName(t));
 	}
 	
+	public ArrayList<Statement> retrieveObject(String uri) {
+		ArrayList<Statement> list = new ArrayList();
+		
+		try {
+			HBaseUtil util = new HBaseUtil(null);
+			
+			ArrayList<ArrayList<String>> triples = util.getValue(uri, table);
+			
+			for (Iterator<ArrayList<String>> it = triples.iterator(); it.hasNext();) {
+				
+				ArrayList<String> triple = (ArrayList<String>)it.next();
+				int index = 0;
+				
+//				out.write("<" + URI + "> ");
+				Resource subj = new URIImpl(uri);
+				
+				URI pred = null;
+				Value obj = null;
+				for (Iterator<String> jt = triple.iterator(); jt.hasNext();) {
+					String res = (String)jt.next();
+					index++;
+					
+					if (index == 1) {
+						res = util.getPredicate(res);
+						pred = new URIImpl(res);
+					}
+					else if (index == 2) {
+//						out.write("<" + res + "> ");
+						if (res.compareTo("resource") == 0) {
+							String o = (String)jt.next();
+							obj = new URIImpl(o);
+						}
+						else if (res.compareTo("literal") == 0) {
+							String o = (String)jt.next();
+							obj = new LiteralImpl(o);
+						}
+					}
+				}
+			
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return list;
+	}
+	
 	public ArrayList<Statement> retrieveSubject(String uri) {
 		ArrayList<Statement> list = new ArrayList();
 		
@@ -84,6 +132,8 @@ public class RetrieveURI {
 	public void printURIInfo(String URI) {
 		try {
 			ArrayList<Statement> list = retrieveSubject(URI);
+			ArrayList<Statement> list2 = retrieveObject(URI);
+			list.addAll(list2);
 			Iterator it= list.iterator();
 			while (it.hasNext()) {
 				Statement s = (Statement)it.next();
@@ -139,6 +189,8 @@ public class RetrieveURI {
 	public static void main(String[] args) {
 		RetrieveURI ruri = new RetrieveURI("tbl-card");
 		ruri.printURIInfo("http://www.w3.org/data#W3C");
+		ruri.printURIInfo("http://xmlns.com/foaf/0.1/Person");
+		
 		
 		//retrieveFile("/home/anca/Documents/OPS/trials/URIlist", "/home/anca/Documents/OPS/trials/out.ttl", "excerpt");
 	}

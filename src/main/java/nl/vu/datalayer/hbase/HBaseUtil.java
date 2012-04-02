@@ -182,4 +182,33 @@ public class HBaseUtil {
 		
 		return URI;
 	}
+	
+	public ArrayList<ArrayList<String>> getValue(String URI, String tableName)  throws IOException {
+		HTable table = new HTable(conf, tableName);
+	    
+		Get g = new Get();
+		ValueFilter vf = new ValueFilter(CompareFilter.CompareOp.EQUAL, new BinaryComparator(Bytes.toBytes(URI)));
+	    Result r = table.get(g);
+	    
+	    ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
+	    List<KeyValue> rawList = r.list();
+	    
+	    for (Iterator<KeyValue> it = rawList.iterator(); it.hasNext();) {
+	    	KeyValue k = (KeyValue)it.next();
+	    	ArrayList<String> triple = new ArrayList();
+	    	
+	    	String pred = Bytes.toString(k.getFamily());
+	    	triple.add(pred);
+	    	
+	    	String objType = Bytes.toString(k.getQualifier());
+	    	triple.add(objType);
+	    	
+	    	String val = Bytes.toString(k.getValue());
+	    	triple.add(val);
+	    	
+	    	list.add(triple);
+	    }
+	    
+	    return list;
+	}
 }
