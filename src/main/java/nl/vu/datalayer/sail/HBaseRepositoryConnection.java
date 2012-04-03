@@ -1,4 +1,8 @@
 package nl.vu.datalayer.sail;
+import nl.vu.datalayer.*;
+import nl.vu.datalayer.hbase.NTripleParser;
+import nl.vu.datalayer.hbase.RetrieveURI;
+
 
 import info.aduna.iteration.Iteration;
 
@@ -7,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import org.openrdf.model.Namespace;
 import org.openrdf.model.Resource;
@@ -37,11 +43,17 @@ import org.openrdf.rio.RDFParseException;
 import org.openrdf.sail.SailConnection;
 
 public class HBaseRepositoryConnection extends SailRepositoryConnection {
+	
+	HBaseRepository hbaseRepo;
+	HBaseConnection hbaseConn;
 
-	protected HBaseRepositoryConnection(SailRepository repository,
-			SailConnection sailConnection) {
+	protected HBaseRepositoryConnection(HBaseRepository repository,
+			HBaseConnection sailConnection) {
 		super(repository, sailConnection);
 		// TODO Auto-generated constructor stub
+		
+		hbaseRepo = repository;
+		hbaseConn = sailConnection;
 	}
 
 	@Override
@@ -52,46 +64,16 @@ public class HBaseRepositoryConnection extends SailRepositoryConnection {
 	}
 
 	@Override
-	public void add(Iterable<? extends Statement> arg0, Resource... arg1)
-			throws RepositoryException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public <E extends Exception> void add(
-			Iteration<? extends Statement, E> arg0, Resource... arg1)
-			throws RepositoryException, E {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void add(InputStream arg0, String arg1, RDFFormat arg2,
-			Resource... arg3) throws IOException, RDFParseException,
-			RepositoryException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void add(Reader arg0, String arg1, RDFFormat arg2, Resource... arg3)
-			throws IOException, RDFParseException, RepositoryException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void add(URL arg0, String arg1, RDFFormat arg2, Resource... arg3)
-			throws IOException, RDFParseException, RepositoryException {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
 	public void add(File arg0, String arg1, RDFFormat arg2, Resource... arg3)
 			throws IOException, RDFParseException, RepositoryException {
-		// TODO Auto-generated method stub
+		if (arg2 == RDFFormat.NTRIPLES) {
+			NTripleParser ntp = new NTripleParser(arg0.getAbsolutePath(), null);
+			ntp.parse();
+		}
+		else {
+			RDFParseException e = new RDFParseException("Unsupported RDF Format");
+			throw e;
+		}
 		
 	}
 
@@ -137,7 +119,10 @@ public class HBaseRepositoryConnection extends SailRepositoryConnection {
 	public void exportStatements(Resource arg0, URI arg1, Value arg2,
 			boolean arg3, RDFHandler arg4, Resource... arg5)
 			throws RepositoryException, RDFHandlerException {
-		// TODO Auto-generated method stub
+		if (arg0 != null && arg5.length == 1) {
+			RetrieveURI ruri = new RetrieveURI(arg5[0].stringValue());
+			ruri.printURIInfo(arg0.stringValue());
+		}
 		
 	}
 
@@ -163,8 +148,7 @@ public class HBaseRepositoryConnection extends SailRepositoryConnection {
 
 	@Override
 	public Repository getRepository() {
-		// TODO Auto-generated method stub
-		return null;
+		return hbaseRepo;
 	}
 
 	@Override
@@ -191,7 +175,19 @@ public class HBaseRepositoryConnection extends SailRepositoryConnection {
 	@Override
 	public boolean hasStatement(Resource arg0, URI arg1, Value arg2,
 			boolean arg3, Resource... arg4) throws RepositoryException {
-		// TODO Auto-generated method stub
+		if (arg0 != null && arg4.length == 1) {
+			RetrieveURI ruri = new RetrieveURI(arg4[0].stringValue());
+			ArrayList<Statement> list = ruri.retrieveSubject(arg0.stringValue());
+			
+			Iterator it = list.iterator();
+			while (it.hasNext()) {
+				Statement st = (Statement)it.next();
+				if (st.getPredicate().stringValue() == arg1.stringValue() && st.getObject().stringValue() == arg2.stringValue()) {
+					return true;
+				}
+			}
+			return false;
+		}
 		return false;
 	}
 

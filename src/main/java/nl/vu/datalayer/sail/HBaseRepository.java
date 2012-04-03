@@ -11,22 +11,20 @@ import org.openrdf.repository.sail.SailRepositoryConnection;
 import org.openrdf.sail.Sail;
 
 public class HBaseRepository extends SailRepository {
+	
+	String configuration;
+	
 
-	public HBaseRepository(Sail sail) {
+	public HBaseRepository(Sail sail, String c) {
 		super(sail);
-		// TODO Auto-generated constructor stub
+		configuration = c;
 	}
 
 	@Override
 	public HBaseRepositoryConnection getConnection() throws RepositoryException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public File getDataDir() {
-		// TODO Auto-generated method stub
-		return null;
+		HBaseConnection conn = new HBaseConnection();
+		HBaseRepositoryConnection repoConn = new HBaseRepositoryConnection(this, conn); 
+		return repoConn;
 	}
 
 	@Override
@@ -41,17 +39,6 @@ public class HBaseRepository extends SailRepository {
 		
 	}
 
-	@Override
-	public boolean isWritable() throws RepositoryException {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public void setDataDir(File arg0) {
-		// TODO Auto-generated method stub
-		
-	}
 
 	@Override
 	public void shutDown() throws RepositoryException {
