@@ -11,6 +11,7 @@ import org.openrdf.query.BindingSet;
 import org.openrdf.query.Dataset;
 import org.openrdf.query.QueryEvaluationException;
 import org.openrdf.query.algebra.TupleExpr;
+import org.openrdf.query.algebra.UpdateExpr;
 import org.openrdf.sail.SailConnection;
 import org.openrdf.sail.SailException;
 
@@ -118,6 +119,13 @@ public class HBaseConnection implements SailConnection {
 	public long size(Resource... arg0) throws SailException {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+
+	@Override
+	public void executeUpdate(UpdateExpr arg0, Dataset arg1, BindingSet arg2,
+			boolean arg3) throws SailException {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

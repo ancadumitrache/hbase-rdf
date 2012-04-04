@@ -417,5 +417,5 @@ public class HBaseDataLayer
 			}
 		}
 		
-		public byte[] serialize()
+		//public byte[] serialize()
 }

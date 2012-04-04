@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.openrdf.model.URI;
 import org.openrdf.model.impl.URIImpl;
 
-import com.sun.appserv.util.cache.Constants;
+//import com.sun.appserv.util.cache.Constants;
 
 
 public class HBaseUtil {	
