@@ -1,4 +1,4 @@
-package nl.vu.datalayer.hbase;
+package nl.vu.datalayer.sail;
 
 import info.aduna.iteration.CloseableIteration;
 
